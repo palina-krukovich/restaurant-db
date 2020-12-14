@@ -1,9 +1,3 @@
-use master;
-go
-
-drop database Restaurant;
-go
-
 create database Restaurant;
 go
 
@@ -843,6 +837,34 @@ begin
     from HumanResources.Employee;
     return @AverageRate;
 end;
+go
+
+-- Table-valued functions
+
+create or alter function Production.GetProductsCostPrice()
+    returns table as
+return
+    select p.ProductID,
+           p.ProductName,
+           p.Size,
+           p.RealPrice,
+           sum(sai.PricePerUnit * pi.Quantity) as CostPrice
+    from (
+        select p.ProductID,
+             pd.Name as ProductName,
+             p.Price as RealPrice,
+             s.Name  as Size
+        from Production.Product p
+        inner join Production.ProductDetails pd
+        on p.ProductDetailsID = pd.ProductDetailsID
+        inner join Production.Size s
+        on p.SizeID = s.SizeID
+    ) p
+    inner join Production.ProductIngredient pi
+    on p.ProductID = pi.ProductID
+    inner join Inventory.SupplyAgreementItem sai
+    on pi.IngredientID = sai.IngredientID
+    group by p.ProductID, p.ProductName, p.RealPrice, p.Size;
 go
 
 /* Procedures */
