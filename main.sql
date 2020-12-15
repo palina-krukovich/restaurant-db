@@ -178,7 +178,7 @@ create table HumanResources.Vacation
     constraint FK_Vacation_Employee foreign key (EmployeeID)
         references HumanResources.Employee (EmployeeID)
         on delete cascade,
-    constraint CK_Vacation_StartEndDate check (datediff(hour, StartDate, EndDate) > 0)
+    constraint CK_Vacation_StartEndDate check (datediff(hour, StartDate, EndDate) > 0 and year(StartDate) = year(EndDate))
 );
 go
 
@@ -193,7 +193,7 @@ create table HumanResources.SickLeave
     constraint FK_SickLeave_Employee foreign key (EmployeeID)
         references HumanResources.Employee (EmployeeID)
         on delete cascade,
-    constraint CK_SickLeave_StartEndDate check (datediff(hour, StartDate, EndDate) > 0)
+    constraint CK_SickLeave_StartEndDate check (datediff(hour, StartDate, EndDate) > 0 and year(StartDate) = year(EndDate))
 );
 go
 
@@ -865,6 +865,25 @@ return
     inner join Inventory.SupplyAgreementItem sai
     on pi.IngredientID = sai.IngredientID
     group by p.ProductID, p.ProductName, p.RealPrice, p.Size;
+go
+
+create or alter function HumanResources.GetVacationsAndSickLeavesLeft()
+    returns table as
+return
+    select
+        e.EmployeeID,
+        p.FirstName,
+        p.LastName,
+        e.AvailableVacationDays - sum(isnull(v.VacationDays, 0)) as VacationDaysLeft,
+        e.AvailableSickLeaveDays - sum(isnull(sl.SickLeaveDays, 0)) as SickLeaveDaysLeft
+    from HumanResources.Employee e
+    inner join HumanResources.Person p
+    on e.PersonID = p.PersonID
+    left join HumanResources.Vacation v
+    on e.EmployeeID = v.EmployeeID and year(v.StartDate) = year(current_timestamp)
+    left join HumanResources.SickLeave sl
+    on e.EmployeeID = sl.EmployeeID and year(sl.StartDate) = year(current_timestamp)
+    group by e.EmployeeID, p.FirstName, p.LastName, e.AvailableVacationDays, e.AvailableSickLeaveDays;
 go
 
 /* Procedures */
