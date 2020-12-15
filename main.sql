@@ -898,7 +898,7 @@ create or alter procedure HumanResources.SearchEmployee
     @Fired bit = null,
     @MinHourlyRate decimal(19, 4) = null,
     @MaxHourlyRate decimal(19, 4) = null
-AS
+as
 begin
     select p.FirstName,
            p.LastName,
@@ -924,3 +924,30 @@ begin
 end;
 go
 
+create or alter procedure Inventory.SupplyReport
+    @StartDate datetime = null,
+    @EndDate datetime = null
+as
+begin
+    select
+        s.SupplyDate,
+        v.CompanyName,
+        s.TotalPrice,
+        s.Completed,
+        string_agg(i.Name, ', ') as Ingredients
+    from Inventory.Supply s
+    inner join Inventory.SupplyAgreement sa
+    on s.SupplyAgreementID = sa.SupplyAgreementID
+    inner join Inventory.Vendor v
+    on sa.VendorID = v.VendorID
+    inner join Inventory.SupplyItem si
+    on s.SupplyID = si.SupplyID
+    inner join Inventory.SupplyAgreementItem sai
+    on si.SupplyAgreementItemID = sai.SupplyAgreementItemID
+    inner join Inventory.Ingredient i
+    on sai.IngredientID = i.IngredientID
+    where datediff(hour, isnull(@StartDate, s.SupplyDate), s.SupplyDate) >= 0
+        and datediff(hour, s.SupplyDate, isnull(@EndDate, s.SupplyDate)) >= 0
+    group by s.SupplyDate, v.CompanyName, s.TotalPrice, s.Completed
+end;
+go
