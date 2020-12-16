@@ -33,7 +33,6 @@ create table HumanResources.Permission
 );
 go
 
-
 create table HumanResources.RolePermission
 (
     RoleID       int not null,
@@ -95,9 +94,9 @@ create table HumanResources.CustomerAddress
     CustomerID   int                 not null,
     Street       nvarchar(50)        not null,
     House        nvarchar(10)        not null,
-    Apartment    nvarchar(10)        not null,
-    Entrance     int                 not null,
-    Floor        int                 not null,
+    Apartment    int default -1,
+    Entrance     int default -1,
+    Floor        int default -1,
     EntranceCode nvarchar(10),
     IsPrimary    bit default 0       not null,
     constraint PK_AddressAddress primary key (AddressID),
@@ -202,6 +201,7 @@ create table HumanResources.Timesheet
     TimesheetID int identity (1, 1) not null,
     StartTime   time                not null,
     EndTime     time                not null,
+    TotalHours  as datediff(hour, StartTime, EndTime),
     Title       nvarchar(50)        not null,
     constraint PK_Timesheet primary key (TimesheetID),
 );
@@ -588,7 +588,7 @@ create table Sales.Discount
     Summary        nvarchar(512),
     DiscountPct    float default 0     not null,
     ActiveFromDate datetime not null,
-    ActiveToDate   datetime not null,
+    ActiveToDate   datetime,
     constraint PK_Discount primary key (DiscountID),
     constraint CK_Discount_DiscountPct check (DiscountPct >= 0.0 and DiscountPct <= 1.0),
     constraint CK_Discount_ActiveStartEndDate check (datediff(minute, ActiveFromDate, ActiveToDate) > 0)
@@ -837,6 +837,51 @@ begin
     from HumanResources.Employee;
     return @AverageRate;
 end;
+go
+
+create or alter function HumanResources.GetSalary (@EmployeeID int, @StartDate datetime, @EndDate datetime,
+                                                   @CurrentRate decimal(19, 4))
+returns decimal(19, 4) as
+begin
+    declare @Salary decimal(19, 4) = 0
+    if @CurrentRate is null
+        select @CurrentRate = HourlyRate
+        from HumanResources.Employee
+        where EmployeeID = @EmployeeID;
+
+    if exists(select * from HumanResources.GetEmployeeRateChangeHistory(@EmployeeID, dateadd(day, 1, @StartDate), @EndDate))
+    begin
+        declare @EndPeriodDate datetime = @EndDate;
+        declare @PeriodRate decimal(19, 4) = @CurrentRate;
+        select
+            @Salary += HumanResources.GetSalary(@EmployeeID, RateChangeDate, @EndPeriodDate, @PeriodRate),
+            @EndPeriodDate = dateadd(day, -1, RateChangeDate),
+            @PeriodRate = isnull(OldRate, 0)
+        from HumanResources.GetEmployeeRateChangeHistory(@EmployeeID, @StartDate, @EndDate)
+        order by RateChangeDate desc;
+        select @Salary += HumanResources.GetSalary(@EmployeeID, @StartDate, @EndPeriodDate, @PeriodRate)
+    end
+    else
+        select
+            @Salary = sum(t.TotalHours) * @CurrentRate
+        from HumanResources.Schedule s
+        inner join HumanResources.Timesheet t
+        on s.TimesheetID = t.TimesheetID
+        where s.EmployeeID = @EmployeeID
+          and datediff(day, @StartDate, ScheduleDate) >= 0
+          and datediff(day, ScheduleDate, @EndDate) >= 0
+        group by EmployeeID;
+    return @Salary;
+end;
+go
+
+create or alter function HumanResources.GetEmployeeRateChangeHistory(@EmployeeID int, @StartDate datetime, @EndDate datetime)
+returns table as
+return
+    select * from HumanResources.EmployeePayHistory
+    where EmployeeID = @EmployeeID
+      and datediff(day, @StartDate, RateChangeDate) >= 0
+      and datediff(day, RateChangeDate, @EndDate) >= 0;
 go
 
 -- Table-valued functions

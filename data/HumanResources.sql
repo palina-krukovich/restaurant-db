@@ -67,14 +67,14 @@ go
 
 -- CustomerAddress
 insert into HumanResources.CustomerAddress (CustomerID, Street, House, Apartment, Entrance, Floor, EntranceCode)
-values (1, 'Green st.', '11', '86', 1, 14, '86'),
-       (2, 'Creek st.', '35', '6', 1, 2, '6'),
-       (3, 'Congress st.', '67/1', '8a', 1, 2, '8'),
-       (4, 'Dickson st.', '69/2', '9', 1, 3, '9'),
-       (5, 'Lombard st.', '2', '106', 2, 2, '106'),
-       (5, 'Larimer st.', '1', '189b', 3, 5, '189'),
-       (6, 'Chapel st.', '35', '13', 1, 3, '13'),
-       (7, 'Second st.', '17', '78', 1, 8, '78');
+values (1, 'Green st.', '11', 86, 1, 14, '86'),
+       (2, 'Creek st.', '35', 6, 1, 2, '6'),
+       (3, 'Congress st.', '67/1', 8, 1, 2, '8'),
+       (4, 'Dickson st.', '69/2', 9, 1, 3, '9'),
+       (5, 'Lombard st.', '2', 106, 2, 2, '106'),
+       (5, 'Larimer st.', '1', 189, 3, 5, '189'),
+       (6, 'Chapel st.', '35', 13, 1, 3, '13'),
+       (7, 'Second st.', '17', 78, 1, 8, '78');
 go
 
 -- Job
